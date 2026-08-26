@@ -8,18 +8,18 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- 2026 최신 벤토 그리드 & 셀렉박스 강제 다크모드 CSS (글자 안 보이는 거 수정완료 💯) ---
+# --- 🚨 라이트모드 찌꺼기 원천 차단 강력 CSS & JS 핵 🚨 ---
 st.markdown("""
 <style>
-    /* 전체 배경 */
+    /* 전체 배경 및 폰트 */
     .stApp {
-        background-color: #020617;
-        color: #F8FAFC;
+        background-color: #020617 !important;
+        color: #F8FAFC !important;
     }
     
-    /* 벤토 박스 컨테이너 디자인 */
+    /* 벤토 박스 */
     .bento-box {
-        background: linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.9));
+        background: linear-gradient(135deg, rgba(30, 41, 59, 0.8), rgba(15, 23, 42, 0.95));
         border: 1px solid #334155;
         border-radius: 20px;
         padding: 25px;
@@ -27,37 +27,64 @@ st.markdown("""
         margin-bottom: 20px;
     }
     
-    /* 네온 포인트 텍스트 */
+    /* 네온 포인트 */
     .neon-text {
         color: #84CC16;
         font-weight: 800;
         text-shadow: 0 0 10px rgba(132, 204, 22, 0.5);
     }
 
-    /* 🚨 셀렉박스 하얀색 배경 및 안 보이는 글자 완벽 해결 🚨 */
-    div[data-baseweb="select"] > div {
-        background-color: #1e293b !important;
+    /* 💥 스트림릿 셀렉박스(Selectbox) 라이트모드 찌꺼기 완전 섬멸 💥 */
+    /* 메인 셀렉박스 입력 필드 */
+    div[data-baseweb="select"] > div,
+    div[data-baseweb="select"] div {
+        background-color: #0f172a !important;
         color: #F8FAFC !important;
         border-color: #334155 !important;
     }
-    span[data-baseweb="tag"] {
-        background-color: #334155 !important;
+    
+    /* 셀렉박스 내부 글자 및 아이콘 */
+    div[data-baseweb="select"] span, 
+    div[data-baseweb="select"] svg {
         color: #F8FAFC !important;
+        fill: #F8FAFC !important;
     }
-    /* 드롭다운 목록 글자색 강제 흰색 */
+
+    /* 드롭다운 펼쳐졌을 때 뜨는 메뉴 리스트 박스 */
+    div[data-baseweb="popover"],
+    div[data-baseweb="menu"],
+    ul[role="listbox"] {
+        background-color: #0f172a !important;
+        color: #F8FAFC !important;
+        border: 1px solid #334155 !important;
+    }
+
+    /* 드롭다운 개별 옵션 항목 */
     li[role="option"] {
         background-color: #0f172a !important;
+        color: #F8FAFC !important;
+    }
+    
+    /* 마우스 올렸을 때(Hover) 항목 색상 */
+    li[role="option"]:hover {
+        background-color: #334155 !important;
+        color: #84CC16 !important;
+    }
+    
+    /* 선택된 태그나 라벨 배경 */
+    span[data-baseweb="tag"] {
+        background-color: #334155 !important;
         color: #F8FAFC !important;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 헤더 섹션 (이모지 폭탄 100개 가보자고 🚀) ---
+# --- 헤더 섹션 ---
 st.markdown("<h1 style='text-align: center;'>🔥✨💯 폼 미쳤다! 내 MBTI에 딱 맞는 찰떡 직업 찾기 🚀💸👑</h1>", unsafe_allow_html=True)
-st.markdown("<h3 style='text-align: center; color: #94A3B8;'>😎 MZ력 10000% 충전! GIF 10개 이상 폭격 버전 💀🤡🤪</h3>", unsafe_allow_html=True)
+st.markdown("<h3 style='text-align: center; color: #94A3B8;'>😎 MZ력 10000% 충전! 라이트모드 찌꺼기 박멸 버전 💀🤡🤪</h3>", unsafe_allow_html=True)
 st.write("---")
 
-# MBTI별 직업 데이터 (각 MBTI별로 뇌절 도파민 GIF 10개 이상씩 세팅 완료 🤪🔥)
+# MBTI별 직업 데이터 (GIF 10개 이상 도배)
 mbti_jobs = {
     "INTJ": {
         "job": "AI 설계자, 스타트업 CEO 🧠💼", 
@@ -317,7 +344,7 @@ mbti_jobs = {
     }
 }
 
-# --- 메인 입력 레이아웃 (벤토 박스 스타일) ---
+# --- 메인 입력 레이아웃 ---
 st.markdown("<div class='bento-box'>", unsafe_allow_html=True)
 st.markdown("### 👇 현기증 나니까 빨리 골라라 😵‍💫👇")
 mbti_options = ["선택안함 🙄"] + list(mbti_jobs.keys())
@@ -331,23 +358,22 @@ if st.button("🚀 내 직업 확인하기! 가보자고! 🔥", use_container_w
     else:
         st.success("폼 미쳤다!!! 결과 떴다!!! 🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉")
         
-        with st.spinner("도파민 폭발 GIF 10개 이상 로딩 중... 🔮✨"):
+        with st.spinner("다크모드 100% 강제 적용 중... 🔮✨"):
             time.sleep(1.2)
         st.balloons()
         
-        # ⭐️ 벤토 그리드 카드 레이아웃 (텍스트 영역) ⭐️
+        # 벤토 그리드 카드 레이아웃
         st.markdown("<div class='bento-box'>", unsafe_allow_html=True)
         st.markdown(f"## 💖 너의 MBTI: <span class='neon-text'>{selected_mbti}</span> 💖", unsafe_allow_html=True)
         st.markdown(f"### 🎯 추천 직업: {mbti_jobs[selected_mbti]['job']}")
         st.info(f"👉 {mbti_jobs[selected_mbti]['desc']}")
-        st.markdown("🔥 **ㄹㅇ 반박 불가 맞춤형 진로 가이드 & GIF 폭격 발급 완료** 💯")
+        st.markdown("🔥 **라이트모드 찌꺼기 1도 없는 완벽한 다크 디자인 발급 완료** 💯")
         st.markdown("</div>", unsafe_allow_html=True)
         
-        # ⭐️ GIF 10개 이상 연달아 박아버리기 (3열 그리드 구조) ⭐️
+        # GIF 10개 이상 연달아 폭격
         st.markdown("### 💥 뿌슝빠슝 도파민 GIF 폭탄 세례 💥")
         imgs = mbti_jobs[selected_mbti]['imgs']
         
-        # 3개씩 줄지어서 10개 넘게 출력
         for i in range(0, len(imgs), 3):
             cols = st.columns(3)
             for j in range(3):
@@ -355,10 +381,10 @@ if st.button("🚀 내 직업 확인하기! 가보자고! 🔥", use_container_w
                     with cols[j]:
                         st.image(imgs[i + j], use_container_width=True)
         
-        # 마무리 이모지 폭탄 도배
+        # 마무리 이모지
         st.markdown("<h4 style='text-align: center;'>💸💸💸👑👑👑🤪🤪🤪💀💀💀🔥🔥🔥🚀🚀🚀</h4>", unsafe_allow_html=True)
-        st.write("완전 찰떡이지? GIF 10개 넘게 처맞으니까 정신이 번쩍 들지? ㄹㅇ 인정? 어 인정~ 🚀🚀")
+        st.write("이제 하얀색 찌꺼기 안 보이지? 완벽 그 잡채니까 빨리 링크 공유 ㄱㄱ 🚀🚀")
 
-# 푸터 장식
+# 푸터
 st.markdown("---")
 st.markdown("<p style='text-align: center; color: #64748B;'>© 2026 MZ Career Education Platform. All rights reserved. 🔥</p>", unsafe_allow_html=True)
