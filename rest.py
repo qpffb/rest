@@ -54,7 +54,7 @@ if 'p_j' not in st.session_state: st.session_state.p_j = 'P'
 
 # --- 헤더 섹션 ---
 st.markdown("<h1 style='text-align: center; color: #0F172A;'>🔥✨💯 폼 미쳤다! 대형 버튼 조합형 찰떡 직업 🚀💸👑</h1>", unsafe_allow_html=True)
-st.markdown("<h3 style='text-align: center; color: #475569;'>😎 100개의 미니 도파민 GIF 폭격 & 대형 클릭 버튼 버전 💥🤡</h3>", unsafe_allow_html=True)
+st.markdown("<h3 style='text-align: center; color: #475569;'>😎 MADE BY JEMINI 😎</h3>", unsafe_allow_html=True)
 st.write("---")
 
 # MBTI별 직업 데이터
