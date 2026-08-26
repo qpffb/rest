@@ -8,25 +8,32 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- 🚨 커스텀 대형 버튼 및 100개 미니 GIF 최적화 CSS 🚨 ---
+# --- 🚨 화이트 모드 및 100개 미니 GIF 최적화 CSS 🚨 ---
 st.markdown("""
 <style>
+    /* 전체 배경 흰색 및 기본 글자색 어두운 회색으로 변경 */
     .stApp {
-        background-color: #020617 !important;
-        color: #F8FAFC !important;
+        background-color: #FFFFFF !important;
+        color: #1E293B !important;
     }
+    /* 벤토 박스 스타일 (연한 회색 배경과 깔끔한 테두리) */
     .bento-box {
-        background: linear-gradient(135deg, rgba(30, 41, 59, 0.8), rgba(15, 23, 42, 0.95));
-        border: 1px solid #334155;
+        background: linear-gradient(135deg, rgba(241, 245, 249, 0.8), rgba(226, 232, 240, 0.95));
+        border: 1px solid #CBD5E1;
         border-radius: 20px;
         padding: 25px;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
         margin-bottom: 20px;
     }
+    /* 네온 텍스트 (화이트 모드에 맞게 선명한 초록/포인트 컬러) */
     .neon-text {
-        color: #84CC16;
+        color: #16A34A;
         font-weight: 800;
-        text-shadow: 0 0 10px rgba(132, 204, 22, 0.5);
+        text-shadow: 0 0 10px rgba(22, 163, 74, 0.2);
+    }
+    /* 서브 텍스트 가독성 개선 */
+    h3, h4 {
+        color: #334155 !important;
     }
     /* GIF 이미지 컴팩트하게 조절 */
     img {
@@ -46,8 +53,8 @@ if 't_f' not in st.session_state: st.session_state.t_f = 'T'
 if 'p_j' not in st.session_state: st.session_state.p_j = 'P'
 
 # --- 헤더 섹션 ---
-st.markdown("<h1 style='text-align: center;'>🔥✨💯 폼 미쳤다! 대형 버튼 조합형 찰떡 직업 🚀💸👑</h1>", unsafe_allow_html=True)
-st.markdown("<h3 style='text-align: center; color: #94A3B8;'>😎 100개의 미니 도파민 GIF 폭격 & 대형 클릭 버튼 버전 💥🤡</h3>", unsafe_allow_html=True)
+st.markdown("<h1 style='text-align: center; color: #0F172A;'>🔥✨💯 폼 미쳤다! 대형 버튼 조합형 찰떡 직업 🚀💸👑</h1>", unsafe_allow_html=True)
+st.markdown("<h3 style='text-align: center; color: #475569;'>😎 100개의 미니 도파민 GIF 폭격 & 대형 클릭 버튼 버전 💥🤡</h3>", unsafe_allow_html=True)
 st.write("---")
 
 # MBTI별 직업 데이터
