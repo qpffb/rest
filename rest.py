@@ -1,64 +1,161 @@
 import streamlit as st
-import random
+import streamlit.components.v1 as components
 
-st.set_page_config(page_title="Streamlit 타자게임", page_icon="⌨️", layout="centered")
+st.set_page_config(page_title="Streamlit Snake", layout="centered")
 
-# 타자 연습용 제시어 목록
-WORDS = [
-    "스트림릿", "파이썬", "깃허브", "마인크래프트", "지뢰찾기",
-    "인공지능", "데이터분석", "프론트엔드", "백엔드", "키보드워리어",
-    "오픈소스", "알고리즘", "버그수정", "무한루프", "개발자"
-]
+st.title("🐍 스트림릿 스네이크 게임")
+st.write("키보드 방향키(⬆️ ⬇️ ⬅️ ➡️)로 조작하세요.")
 
-# 세션 상태(Session State) 초기화
-if "score" not in st.session_state:
-    st.session_state.score = 0
-    st.session_state.current_word = random.choice(WORDS)
-    st.session_state.input_key = 0  # 텍스트 박스 초기화를 위한 키값
-    st.session_state.message = "엔터(Enter)를 누르면 입력됩니다. 시작!"
-
-# 입력 처리 함수 (엔터 칠 때마다 실행됨)
-def check_typing():
-    # 현재 텍스트 박스에 입력된 값 가져오기
-    user_text = st.session_state[str(st.session_state.input_key)]
-
-    if user_text == st.session_state.current_word:
-        st.session_state.score += 10
-        st.session_state.message = f"✅ 나이스! (+10점)"
-        st.session_state.current_word = random.choice(WORDS)
-    else:
-        st.session_state.score -= 5
-        st.session_state.message = f"❌ 오타! 다시 똑바로 쳐봐요 (-5점)"
-
-    # 엔터 칠 때마다 텍스트 박스를 비워주기 위해 key 값을 바꿈
-    st.session_state.input_key += 1
-
-st.title("⌨️ 심플 타자 게임")
-
-# 점수판
-st.metric(label="💯 현재 점수", value=f"{st.session_state.score} 점")
-st.divider()
-
-# 제시어 표시 (크게 보이게)
-st.markdown(f"<h2 style='text-align: center; color: #4CAF50;'>{st.session_state.current_word}</h2>", unsafe_allow_html=True)
-
-# 텍스트 입력창 (on_change를 써서 엔터 누를 때마다 check_typing 함수 실행)
-st.text_input(
-    "위 단어를 똑같이 입력하고 엔터를 누르세요:", 
-    key=str(st.session_state.input_key), 
-    on_change=check_typing
+# 3가지 종목 선택
+mode = st.radio(
+    "종목(모드)을 선택해:",
+    ["클래식 (벽 닿으면 즉사)", "포탈 (벽 뚫고 반대편으로)", "광기 (속도 2배)"],
+    horizontal=True
 )
 
-# 피드백 메시지
-if "✅" in st.session_state.message:
-    st.success(st.session_state.message)
-elif "❌" in st.session_state.message:
-    st.error(st.session_state.message)
-else:
-    st.info(st.session_state.message)
+# 모드별 세팅값을 JS로 넘겨주기 위한 변수
+game_mode = "CLASSIC"
+if "포탈" in mode:
+    game_mode = "PORTAL"
+elif "광기" in mode:
+    game_mode = "MADNESS"
 
-# 리셋 버튼
-st.divider()
-if st.button("🔄 게임 리셋하기"):
-    st.session_state.clear()
-    st.rerun()
+# HTML/JS로 부드러운 게임 엔진 구현 (스트림릿 렌더링 한계 극복)
+snake_html = f"""
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+    body {{
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        background-color: #0e1117;
+        color: white;
+        font-family: sans-serif;
+        margin: 0;
+        padding: 20px;
+    }}
+    canvas {{
+        background-color: #222;
+        border: 3px solid #4CAF50;
+        box-shadow: 0 0 15px rgba(76, 175, 80, 0.5);
+    }}
+    #scoreBoard {{
+        font-size: 24px;
+        font-weight: bold;
+        margin-bottom: 10px;
+        color: #4CAF50;
+    }}
+</style>
+</head>
+<body>
+    <div id="scoreBoard">점수: <span id="score">0</span></div>
+    <canvas id="gameCanvas" width="400" height="400"></canvas>
+
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const gridSize = 20;
+    const mode = "{game_mode}";
+    
+    let snake = [{{x: 200, y: 200}}];
+    let apple = {{x: 100, y: 100}};
+    let dx = gridSize;
+    let dy = 0;
+    let score = 0;
+    
+    // 광기 모드면 속도 2배 (인터벌 시간이 짧아짐)
+    let speed = mode === "MADNESS" ? 50 : 100; 
+    
+    function spawnApple() {{
+        apple.x = Math.floor(Math.random() * (canvas.width / gridSize)) * gridSize;
+        apple.y = Math.floor(Math.random() * (canvas.height / gridSize)) * gridSize;
+    }}
+
+    function resetGame() {{
+        snake = [{{x: 200, y: 200}}];
+        dx = gridSize;
+        dy = 0;
+        score = 0;
+        document.getElementById('score').innerText = score;
+        spawnApple();
+    }}
+
+    function update() {{
+        let head = {{x: snake[0].x + dx, y: snake[0].y + dy}};
+
+        // 모드별 벽 충돌 처리 로직
+        if (mode === "PORTAL") {{
+            if (head.x < 0) head.x = canvas.width - gridSize;
+            else if (head.x >= canvas.width) head.x = 0;
+            
+            if (head.y < 0) head.y = canvas.height - gridSize;
+            else if (head.y >= canvas.height) head.y = 0;
+        }} else {{
+            // 클래식 & 광기 모드: 벽에 닿으면 죽음
+            if (head.x < 0 || head.x >= canvas.width || head.y < 0 || head.y >= canvas.height) {{
+                resetGame();
+                return;
+            }}
+        }}
+
+        // 자기 몸에 부딪혔을 때
+        for (let i = 0; i < snake.length; i++) {{
+            if (head.x === snake[i].x && head.y === snake[i].y) {{
+                resetGame();
+                return;
+            }}
+        }}
+
+        snake.unshift(head);
+
+        // 사과 먹었을 때
+        if (head.x === apple.x && head.y === apple.y) {{
+            score += 10;
+            document.getElementById('score').innerText = score;
+            spawnApple();
+        }} else {{
+            snake.pop(); // 안 먹었으면 꼬리 자르기 (이동 효과)
+        }}
+    }}
+
+    function draw() {{
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // 사과 그리기
+        ctx.fillStyle = 'red';
+        ctx.fillRect(apple.x, apple.y, gridSize - 2, gridSize - 2);
+        
+        // 뱀 그리기
+        ctx.fillStyle = 'lime';
+        snake.forEach(part => {{
+            ctx.fillRect(part.x, part.y, gridSize - 2, gridSize - 2);
+        }});
+    }}
+
+    function gameLoop() {{
+        update();
+        draw();
+    }}
+
+    // 방향키 조작 (기본 스크롤 방지 포함)
+    window.addEventListener('keydown', e => {{
+        if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].indexOf(e.code) > -1) {{
+            e.preventDefault();
+        }}
+        if (e.key === 'ArrowUp' && dy === 0) {{ dx = 0; dy = -gridSize; }}
+        if (e.key === 'ArrowDown' && dy === 0) {{ dx = 0; dy = gridSize; }}
+        if (e.key === 'ArrowLeft' && dx === 0) {{ dx = -gridSize; dy = 0; }}
+        if (e.key === 'ArrowRight' && dx === 0) {{ dx = gridSize; dy = 0; }}
+    }});
+
+    spawnApple();
+    setInterval(gameLoop, speed);
+</script>
+</body>
+</html>
+"""
+
+# 스트림릿에 HTML 컴포넌트 삽입 (높이를 넉넉하게 줘야 스크롤바가 안 생김)
+components.html(snake_html, height=550)
