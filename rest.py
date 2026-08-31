@@ -3,7 +3,7 @@ import streamlit.components.v1 as components
 
 st.set_page_config(page_title="Streamlit Snake", layout="centered")
 
-st.title("🐍 스트림릿 스네이크 게임 (완전판)")
+st.title("🐍 스트림릿 스네이크 게임 (버그 패치완료)")
 st.write("키보드 방향키(⬆️ ⬇️ ⬅️ ➡️)로 조작하세요.")
 
 # 3가지 종목 선택
@@ -19,7 +19,6 @@ if "포탈" in mode:
 elif "광기" in mode:
     game_mode = "MADNESS"
 
-# HTML/JS - 시작 버튼과 사망창(Overlay) 추가
 snake_html = f"""
 <!DOCTYPE html>
 <html>
@@ -51,7 +50,6 @@ snake_html = f"""
         border: 3px solid #4CAF50;
         box-shadow: 0 0 15px rgba(76, 175, 80, 0.5);
     }}
-    /* 시작/사망 오버레이 창 설정 */
     #overlay {{
         position: absolute;
         top: 0;
@@ -63,7 +61,6 @@ snake_html = f"""
         flex-direction: column;
         justify-content: center;
         align-items: center;
-        border: 3px solid transparent;
         z-index: 10;
     }}
     #overlayTitle {{
@@ -100,7 +97,6 @@ snake_html = f"""
     <div id="gameWrapper">
         <canvas id="gameCanvas" width="400" height="400"></canvas>
         
-        <!-- 게임 오버레이 (시작창 / 사망창) -->
         <div id="overlay">
             <div id="overlayTitle">스네이크 게임</div>
             <div id="overlayScore">최종 점수: <span id="finalScore">0</span></div>
@@ -114,7 +110,6 @@ snake_html = f"""
     const gridSize = 20;
     const mode = "{game_mode}";
     
-    // UI 요소 가져오기
     const overlay = document.getElementById('overlay');
     const overlayTitle = document.getElementById('overlayTitle');
     const overlayScore = document.getElementById('overlayScore');
@@ -126,8 +121,10 @@ snake_html = f"""
     let apple = {{}};
     let dx = gridSize;
     let dy = 0;
+    let nextDx = gridSize; // 연타 방지 및 방향 고정을 위한 변수
+    let nextDy = 0;
     let score = 0;
-    let gameState = "START"; // 상태: START, PLAYING, GAMEOVER
+    let gameState = "START";
     let gameInterval;
     
     let speed = mode === "MADNESS" ? 50 : 100; 
@@ -138,20 +135,18 @@ snake_html = f"""
     }}
 
     function startGame() {{
-        // 변수 초기화
         snake = [{{x: 200, y: 200}}];
         dx = gridSize;
         dy = 0;
+        nextDx = gridSize;
+        nextDy = 0;
         score = 0;
         scoreDisplay.innerText = score;
         gameState = "PLAYING";
         
-        // 오버레이 숨기기
         overlay.style.display = "none";
-        
         spawnApple();
         
-        // 기존 인터벌 지우고 새로 시작
         if(gameInterval) clearInterval(gameInterval);
         gameInterval = setInterval(gameLoop, speed);
     }}
@@ -160,7 +155,6 @@ snake_html = f"""
         gameState = "GAMEOVER";
         clearInterval(gameInterval);
         
-        // 오버레이 띄우기 (사망창 세팅)
         overlay.style.display = "flex";
         overlayTitle.innerText = "💀 사망! 💀";
         overlayTitle.style.color = "#ff4444";
@@ -172,6 +166,10 @@ snake_html = f"""
     function update() {{
         if (gameState !== "PLAYING") return;
 
+        // 키보드 입력을 실제 이동 방향으로 확정
+        dx = nextDx;
+        dy = nextDy;
+
         let head = {{x: snake[0].x + dx, y: snake[0].y + dy}};
 
         if (mode === "PORTAL") {{
@@ -180,14 +178,13 @@ snake_html = f"""
             if (head.y < 0) head.y = canvas.height - gridSize;
             else if (head.y >= canvas.height) head.y = 0;
         }} else {{
-            // 벽 충돌 시 사망
             if (head.x < 0 || head.x >= canvas.width || head.y < 0 || head.y >= canvas.height) {{
                 gameOver();
                 return;
             }}
         }}
 
-        // 자기 몸 충돌 시 사망
+        // 자기 몸 충돌 시 사망 (머리가 몸통 좌표랑 겹치는지 확인)
         for (let i = 0; i < snake.length; i++) {{
             if (head.x === snake[i].x && head.y === snake[i].y) {{
                 gameOver();
@@ -197,7 +194,6 @@ snake_html = f"""
 
         snake.unshift(head);
 
-        // 사과 먹었을 때
         if (head.x === apple.x && head.y === apple.y) {{
             score += 10;
             scoreDisplay.innerText = score;
@@ -211,7 +207,6 @@ snake_html = f"""
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
         if (gameState === "START" || gameState === "GAMEOVER") {{
-            // 시작 전이거나 죽었을 때는 배경만 어둡게 냅둠
             return;
         }}
 
@@ -229,21 +224,21 @@ snake_html = f"""
         draw();
     }}
 
-    // 방향키 조작
+    // 방향키 조작 (역주행 및 동시 입력 꼬임 방지 로직 적용)
     window.addEventListener('keydown', e => {{
         if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight", "Space"].indexOf(e.code) > -1) {{
-            e.preventDefault(); // 스크롤 방지
+            e.preventDefault();
         }}
         
         if (gameState !== "PLAYING") return;
         
-        if (e.key === 'ArrowUp' && dy === 0) {{ dx = 0; dy = -gridSize; }}
-        if (e.key === 'ArrowDown' && dy === 0) {{ dx = 0; dy = gridSize; }}
-        if (e.key === 'ArrowLeft' && dx === 0) {{ dx = -gridSize; dy = 0; }}
-        if (e.key === 'ArrowRight' && dx === 0) {{ dx = gridSize; dy = 0; }}
+        // 현재 이동 방향(dx, dy)의 정반대 방향으로는 아예 입력이 안 되도록 제어
+        if (e.key === 'ArrowUp' && dy === 0) {{ nextDx = 0; nextDy = -gridSize; }}
+        if (e.key === 'ArrowDown' && dy === 0) {{ nextDx = 0; nextDy = gridSize; }}
+        if (e.key === 'ArrowLeft' && dx === 0) {{ nextDx = -gridSize; nextDy = 0; }}
+        if (e.key === 'ArrowRight' && dx === 0) {{ nextDx = gridSize; nextDy = 0; }}
     }});
 
-    // 시작 버튼 클릭 이벤트
     startBtn.addEventListener('click', startGame);
 </script>
 </body>
