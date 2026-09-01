@@ -1,6 +1,5 @@
 import streamlit as st
 import random
-import time
 
 # ============================================================
 # 페이지 설정
@@ -16,13 +15,7 @@ st.set_page_config(
 # ============================================================
 MAX_LEVEL = 20
 STARTING_GOLD = 1_000_000
-PROTECTION_UNIT_PRICE = 400_000
-
-PROTECTION_PACKS = [
-    {"count": 1, "price": 400_000, "discount": 0},
-    {"count": 3, "price": 1_080_000, "discount": 10},
-    {"count": 5, "price": 1_700_000, "discount": 15},
-]
+PROTECTION_PRICE = 400_000
 
 
 def get_enhance_cost(level: int) -> int:
@@ -35,20 +28,20 @@ def get_sell_price(level: int) -> int:
     return int(1500 * (1.75 ** level))
 
 
-def get_probs(target_level: int):
-    """target_level(=강화 시도 후 도달하려는 레벨) 기준 (성공%, 실패%, 파괴%)"""
+def get_success_rate(target_level: int) -> int:
+    """target_level(=강화 시도 후 도달하려는 레벨) 기준 성공 확률(%)"""
     if target_level <= 4:
-        return (95, 5, 0)
+        return 95
     elif target_level <= 8:
-        return (85, 14, 1)
+        return 85
     elif target_level <= 11:
-        return (70, 19, 11)
+        return 70
     elif target_level <= 14:
-        return (55, 24, 21)
+        return 55
     elif target_level <= 17:
-        return (40, 24, 36)
+        return 40
     else:
-        return (25, 24, 51)
+        return 25
 
 
 def get_tier(level: int):
@@ -79,20 +72,16 @@ def init_state():
         st.session_state.gold = STARTING_GOLD
     if "level" not in st.session_state:
         st.session_state.level = 0
-    if "protection" not in st.session_state:
-        st.session_state.protection = 0
-    if "use_protection" not in st.session_state:
-        st.session_state.use_protection = False
     if "last_action" not in st.session_state:
         st.session_state.last_action = None
-    if "nonce" not in st.session_state:
-        st.session_state.nonce = 0
     if "history" not in st.session_state:
         st.session_state.history = []
     if "max_reached" not in st.session_state:
         st.session_state.max_reached = 0
     if "total_sold" not in st.session_state:
         st.session_state.total_sold = 0
+    if "pending_fail" not in st.session_state:
+        st.session_state.pending_fail = None
 
 
 init_state()
@@ -103,20 +92,34 @@ init_state()
 st.markdown(
     """
     <style>
+    .block-container {
+        padding-top: 1.2rem !important;
+        padding-bottom: 1rem !important;
+        max-width: 760px;
+    }
+    div[data-testid="stVerticalBlock"] {
+        gap: 0.45rem;
+    }
     @keyframes shake {
         0% { transform: translateX(0); }
-        15% { transform: translateX(-14px) rotate(-3deg); }
-        30% { transform: translateX(12px) rotate(3deg); }
-        45% { transform: translateX(-10px) rotate(-2deg); }
-        60% { transform: translateX(8px) rotate(2deg); }
+        15% { transform: translateX(-16px) rotate(-3deg); }
+        30% { transform: translateX(14px) rotate(3deg); }
+        45% { transform: translateX(-12px) rotate(-2deg); }
+        60% { transform: translateX(9px) rotate(2deg); }
         75% { transform: translateX(-5px); }
         100% { transform: translateX(0); }
     }
     @keyframes glowpulse {
         0% { transform: scale(1); filter: drop-shadow(0 0 0px gold); }
-        30% { transform: scale(1.35); filter: drop-shadow(0 0 35px gold); }
-        60% { transform: scale(1.1); filter: drop-shadow(0 0 20px #fff59d); }
+        30% { transform: scale(1.3); filter: drop-shadow(0 0 40px gold); }
+        60% { transform: scale(1.08); filter: drop-shadow(0 0 22px #fff59d); }
         100% { transform: scale(1); filter: drop-shadow(0 0 6px gold); }
+    }
+    @keyframes glowblue {
+        0% { transform: scale(1); filter: drop-shadow(0 0 0px #63c4ff); }
+        30% { transform: scale(1.25); filter: drop-shadow(0 0 35px #63c4ff); }
+        60% { transform: scale(1.05); filter: drop-shadow(0 0 18px #bfe8ff); }
+        100% { transform: scale(1); filter: drop-shadow(0 0 6px #63c4ff); }
     }
     @keyframes shatter {
         0% { transform: scale(1) rotate(0deg); opacity: 1; filter: brightness(1); }
@@ -130,22 +133,27 @@ st.markdown(
     }
     .rice-cake-box {
         text-align: center;
-        padding: 30px 10px 10px 10px;
-        border-radius: 18px;
+        padding: 14px 6px;
+        border-radius: 20px;
         background: radial-gradient(circle at 50% 30%, rgba(255,255,255,0.10), rgba(255,255,255,0.02));
         border: 1px solid rgba(255,255,255,0.08);
-        margin-bottom: 10px;
+        min-height: 340px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
     }
     .anim-success { animation: glowpulse 0.9s ease-in-out; display:inline-block; }
     .anim-fail { animation: shake 0.6s ease-in-out; display:inline-block; }
-    .anim-destroy { animation: shatter 0.8s ease-in; display:inline-block; }
+    .anim-destroy { animation: shatter 0.9s ease-in; display:inline-block; }
+    .anim-protect { animation: glowblue 0.9s ease-in-out; display:inline-block; }
     .result-banner {
         text-align:center;
-        font-size:20px;
+        font-size:16px;
         font-weight:700;
-        padding:10px;
-        border-radius:10px;
-        margin: 6px 0 14px 0;
+        padding:6px;
+        border-radius:8px;
+        margin: 2px 0 6px 0;
         animation: fadein 0.4s ease-out;
     }
     .banner-success { background: rgba(255,215,0,0.14); color:#ffd700; border:1px solid rgba(255,215,0,0.4);}
@@ -179,9 +187,9 @@ with st.sidebar:
     st.markdown(
         """
         1. **🔨 강화하기**를 눌러 떡의 레벨을 올려보세요.
-        2. 레벨이 높아질수록 **성공 확률은 낮아지고**,
-           실패 시 떡이 **파괴될 위험**도 커집니다.
-        3. **🛡️ 방지권**을 사용하면 파괴를 막을 수 있어요.
+        2. 레벨이 높아질수록 **성공 확률이 낮아집니다.**
+        3. 강화에 **실패하면 떡이 Lv.0으로 초기화**돼요.
+           그 순간 **방지권(40만원)**으로 지킬 수 있어요!
         4. **💰 떡 팔기**로 지금까지 키운 떡을 현금화하세요.
         5. 최대 **Lv.20 레전드 떡**을 완성해보세요!
         """
@@ -197,14 +205,53 @@ with st.sidebar:
         st.rerun()
 
 # ============================================================
+# 실패 팝업 (강화 실패 시 방지권 사용 여부 선택)
+# ============================================================
+@st.dialog("💥 강화 실패 ㅠㅠ")
+def show_fail_dialog():
+    lvl = st.session_state.pending_fail["level"]
+    st.markdown(f"#### Lv.{lvl} 떡이 와장창 흔들립니다...")
+    st.write("지금 방지권을 사용하면 떡이 **그대로 유지**돼요.")
+    st.write("사용하지 않으면 떡이 **Lv.0으로 초기화**됩니다.")
+    st.divider()
+
+    can_afford = st.session_state.gold >= PROTECTION_PRICE
+    if st.button(
+        f"🛡️ 방지권 사용 (-{PROTECTION_PRICE:,}원)",
+        use_container_width=True,
+        type="primary",
+        disabled=not can_afford,
+    ):
+        st.session_state.gold -= PROTECTION_PRICE
+        st.session_state.last_action = {"type": "protected"}
+        st.session_state.history.insert(
+            0, f"🛡️ Lv.{lvl} 파괴 위기 → 방지권 사용 (-{PROTECTION_PRICE:,}원)"
+        )
+        st.session_state.history = st.session_state.history[:8]
+        st.session_state.pending_fail = None
+        st.rerun()
+
+    if not can_afford:
+        st.caption("😢 골드가 부족해서 방지권을 살 수 없어요.")
+
+    if st.button("😭 포기하고 파괴 인정", use_container_width=True):
+        st.session_state.level = 0
+        st.session_state.last_action = {"type": "destroy", "from": lvl}
+        st.session_state.history.insert(0, f"💥 Lv.{lvl} → Lv.0 떡 파괴!")
+        st.session_state.history = st.session_state.history[:8]
+        st.session_state.pending_fail = None
+        st.rerun()
+
+
+if st.session_state.pending_fail is not None:
+    show_fail_dialog()
+
+# ============================================================
 # 메인 타이틀
 # ============================================================
 st.markdown(
-    "<h1 style='text-align:center;'>🍡 레전드 떡 키우기 🍡</h1>",
-    unsafe_allow_html=True,
-)
-st.markdown(
-    "<p style='text-align:center; color:gray; margin-top:-10px;'>그 유명한 강화 게임, 이번엔 '떡'으로!</p>",
+    "<h3 style='text-align:center; margin:0 0 4px 0;'>🍡 레전드 떡 키우기 🍡"
+    "<span style='font-size:13px; color:gray; font-weight:400;'> · 그 유명한 강화 게임을 떡으로!</span></h3>",
     unsafe_allow_html=True,
 )
 
@@ -213,7 +260,7 @@ gold = st.session_state.gold
 emoji, name, color = get_tier(level)
 
 # ============================================================
-# 애니메이션 클래스 결정
+# 애니메이션 & 배너 결정
 # ============================================================
 anim_class = ""
 banner_html = ""
@@ -222,77 +269,68 @@ if last is not None:
     if last["type"] == "success":
         anim_class = "anim-success"
         banner_html = f"<div class='result-banner banner-success'>✨💥 강화 성공! Lv.{last['from']} → Lv.{last['to']} ✨</div>"
-    elif last["type"] == "fail":
-        anim_class = "anim-fail"
-        banner_html = "<div class='result-banner banner-fail'>😅 강화 실패... 떡은 무사히 버텼습니다.</div>"
     elif last["type"] == "destroy":
         anim_class = "anim-destroy"
         banner_html = f"<div class='result-banner banner-destroy'>💥😱 떡이 파괴되었습니다! Lv.{last['from']} → Lv.0</div>"
     elif last["type"] == "protected":
-        anim_class = "anim-fail"
-        banner_html = "<div class='result-banner banner-protect'>🛡️ 방지권 발동! 파괴 위기를 넘겼습니다.</div>"
+        anim_class = "anim-protect"
+        banner_html = "<div class='result-banner banner-protect'>🛡️ 방지권 발동! 떡을 무사히 지켰습니다.</div>"
     elif last["type"] == "sell":
         banner_html = f"<div class='result-banner banner-success'>💰 떡을 {last['price']:,}원에 판매했습니다!</div>"
-
-# ============================================================
-# 떡 표시 박스
-# ============================================================
-font_size = 70 + level * 4
-st.markdown(
-    f"""
-    <div class="rice-cake-box">
-        <div class="{anim_class}" style="font-size:{font_size}px;">{emoji}</div>
-        <div style="font-size:22px; font-weight:700; color:{color}; margin-top:6px;">{name}</div>
-        <div style="font-size:16px; color:#aaaaaa;">Lv. {level} / {MAX_LEVEL}</div>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
 
 if banner_html:
     st.markdown(banner_html, unsafe_allow_html=True)
 
-st.progress(level / MAX_LEVEL)
-
 # ============================================================
-# 강화 정보 패널
+# 메인 레이아웃: 왼쪽 = 조작 패널 / 오른쪽 = 초대형 떡
 # ============================================================
-if level >= MAX_LEVEL:
-    st.success("🎉 축하합니다! 최고 레벨의 '레전드 떡'을 완성했습니다! 이제 떡을 팔아 대박을 노려보세요!")
-    st.balloons()
-else:
-    target = level + 1
-    succ, fail, destroy = get_probs(target)
-    cost = get_enhance_cost(level)
+col_left, col_right = st.columns([1, 1.3])
 
-    c1, c2, c3 = st.columns(3)
-    c1.metric("성공 확률", f"{succ}%")
-    c2.metric("실패 확률", f"{fail}%")
-    c3.metric("파괴 확률", f"{destroy}%", delta=None)
+with col_right:
+    font_size = min(90 + level * 6, 220)
+    st.markdown(
+        f"""
+        <div class="rice-cake-box">
+            <div class="{anim_class}" style="font-size:{font_size}px; line-height:1;">{emoji}</div>
+            <div style="font-size:22px; font-weight:700; color:{color}; margin-top:8px;">{name}</div>
+            <div style="font-size:15px; color:#aaaaaa;">Lv. {level} / {MAX_LEVEL}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
-    st.caption(f"🔨 강화 비용: **{cost:,}원**  ·  다음 목표: **Lv.{target}**")
+with col_left:
+    st.progress(level / MAX_LEVEL)
 
-    if destroy > 0:
-        st.session_state.use_protection = st.checkbox(
-            f"🛡️ 방지권 사용하기 (보유: {st.session_state.protection}개) — 파괴 방지",
-            value=st.session_state.use_protection,
-            disabled=(st.session_state.protection <= 0),
-        )
+    if level >= MAX_LEVEL:
+        st.success("🎉 레전드 떡 완성!\n이제 팔아서 대박 나세요!")
+        sell_price = get_sell_price(level)
+        if st.button(f"💰 떡 팔기 ({sell_price:,}원)", use_container_width=True, type="primary"):
+            st.session_state.gold += sell_price
+            st.session_state.total_sold += sell_price
+            st.session_state.last_action = {"type": "sell", "price": sell_price}
+            st.session_state.history.insert(0, f"💰 Lv.{level} 떡 판매 (+{sell_price:,}원)")
+            st.session_state.history = st.session_state.history[:8]
+            st.session_state.level = 0
+            st.rerun()
     else:
-        st.session_state.use_protection = False
-        st.caption("이 구간은 파괴 위험이 없습니다. 안심하고 강화하세요!")
+        target = level + 1
+        succ = get_success_rate(target)
+        fail = 100 - succ
+        cost = get_enhance_cost(level)
 
-    col_enh, col_sell = st.columns(2)
+        st.markdown(
+            f"<div style='font-size:15px;'>✅ 성공 <b>{succ}%</b> &nbsp;·&nbsp; 💥 실패 <b>{fail}%</b></div>",
+            unsafe_allow_html=True,
+        )
+        st.caption(f"🔨 강화 비용: **{cost:,}원**  ·  다음 목표: **Lv.{target}**")
 
-    with col_enh:
         if st.button("🔨 강화하기", use_container_width=True, type="primary"):
             if gold < cost:
                 st.toast("💸 골드가 부족합니다!", icon="⚠️")
             else:
                 st.session_state.gold -= cost
                 roll = random.random() * 100
-                st.session_state.nonce += 1
-
                 if roll < succ:
                     st.session_state.level += 1
                     st.session_state.max_reached = max(
@@ -304,30 +342,11 @@ else:
                     st.session_state.history.insert(
                         0, f"✅ Lv.{level} → Lv.{level+1} 강화 성공 (-{cost:,}원)"
                     )
-                elif roll < succ + fail:
-                    st.session_state.last_action = {"type": "fail"}
-                    st.session_state.history.insert(
-                        0, f"➖ Lv.{level} 강화 실패 (-{cost:,}원)"
-                    )
+                    st.session_state.history = st.session_state.history[:8]
                 else:
-                    # 파괴 판정
-                    if st.session_state.use_protection and st.session_state.protection > 0:
-                        st.session_state.protection -= 1
-                        st.session_state.last_action = {"type": "protected"}
-                        st.session_state.history.insert(
-                            0, f"🛡️ Lv.{level} 파괴 위기 → 방지권으로 방어! (-{cost:,}원)"
-                        )
-                    else:
-                        st.session_state.last_action = {"type": "destroy", "from": level}
-                        st.session_state.history.insert(
-                            0, f"💥 Lv.{level} → Lv.0 떡 파괴! (-{cost:,}원)"
-                        )
-                        st.session_state.level = 0
-
-                st.session_state.history = st.session_state.history[:8]
+                    st.session_state.pending_fail = {"level": level}
                 st.rerun()
 
-    with col_sell:
         sell_price = get_sell_price(level)
         if st.button(f"💰 떡 팔기 ({sell_price:,}원)", use_container_width=True):
             st.session_state.gold += sell_price
@@ -340,50 +359,10 @@ else:
             st.session_state.level = 0
             st.rerun()
 
-if level >= MAX_LEVEL:
-    sell_price = get_sell_price(level)
-    if st.button(f"💰 레전드 떡 팔기 ({sell_price:,}원)", use_container_width=True, type="primary"):
-        st.session_state.gold += sell_price
-        st.session_state.total_sold += sell_price
-        st.session_state.last_action = {"type": "sell", "price": sell_price}
-        st.session_state.history.insert(0, f"💰 Lv.{level} 떡 판매 (+{sell_price:,}원)")
-        st.session_state.history = st.session_state.history[:8]
-        st.session_state.level = 0
-        st.rerun()
-
-st.divider()
-
-# ============================================================
-# 방지권 상점
-# ============================================================
-st.markdown("### 🏪 방지권 상점")
-st.caption(f"방지권 1개당 기본가 {PROTECTION_UNIT_PRICE:,}원 · 많이 살수록 할인!")
-
-shop_cols = st.columns(3)
-for idx, pack in enumerate(PROTECTION_PACKS):
-    with shop_cols[idx]:
-        st.markdown(f"**{pack['count']}개 구매**")
-        if pack["discount"] > 0:
-            st.caption(f"{pack['discount']}% 할인가")
-        st.markdown(f"### {pack['price']:,}원")
-        if st.button("구매하기", key=f"buy_{pack['count']}", use_container_width=True):
-            if st.session_state.gold < pack["price"]:
-                st.toast("💸 골드가 부족합니다!", icon="⚠️")
-            else:
-                st.session_state.gold -= pack["price"]
-                st.session_state.protection += pack["count"]
-                st.toast(f"🛡️ 방지권 {pack['count']}개 구매 완료!", icon="✅")
-                st.rerun()
-
-st.caption(f"현재 보유 방지권: **🛡️ {st.session_state.protection}개**")
-
-# ============================================================
-# 강화 기록
-# ============================================================
-if st.session_state.history:
-    with st.expander("📜 최근 기록 보기"):
-        for h in st.session_state.history:
-            st.write(h)
+    if st.session_state.history:
+        with st.expander("📜 최근 기록"):
+            for h in st.session_state.history:
+                st.write(h)
 
 # ============================================================
 # 좌측 하단 골드 표시 (고정)
