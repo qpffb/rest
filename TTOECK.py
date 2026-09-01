@@ -299,6 +299,20 @@ emoji, name, color = get_tier(level)
 # ============================================================
 # 애니메이션 & 배너 & 파티클 결정 (일부러 과하게!)
 # ============================================================
+# ============================================================
+# 애니메이션 & 배너 & 파티클 결정
+# (파티클/화면 플래시 이펙트는 Lv.10부터 등장하며, 레벨이 높을수록 커집니다)
+# ============================================================
+def get_effect_scale(effect_level: int):
+    """10레벨 미만이면 None(이펙트 없음), 이상이면 (count, spread)를 레벨에 비례해 반환"""
+    if effect_level < 10:
+        return None
+    t = min(max((effect_level - 10) / 10, 0), 1)  # Lv10=0.0 ~ Lv20=1.0
+    count = int(8 + t * 30)      # 8개 ~ 38개
+    spread = int(80 + t * 150)   # 80px ~ 230px
+    return count, spread
+
+
 anim_class = ""
 box_extra_class = ""
 banner_html = ""
@@ -307,32 +321,41 @@ last = st.session_state.last_action
 if last is not None:
     if last["type"] == "success":
         anim_class = "anim-success"
-        box_extra_class = "box-flash-gold"
-        particles_html = particle_burst(
-            ["✨", "⭐", "🌟", "💥", "🎉", "🎆", "💫", "🔥"], count=28, spread=160
-        )
+        eff = get_effect_scale(last.get("level", 0))
+        if eff:
+            count, spread = eff
+            box_extra_class = "box-flash-gold"
+            particles_html = particle_burst(
+                ["✨", "⭐", "🌟", "💥", "🎉", "🎆", "💫", "🔥"], count=count, spread=spread
+            )
         banner_html = (
             "<div class='result-banner banner-success banner-rainbow'>"
-            "🎉✨💥 강화 대성공!!! 💥✨🎉<br>"
+            "🎉✨💥 강화 성공! 💥✨🎉<br>"
             f"<span style='font-size:14px;'>Lv.{last['from']} → Lv.{last['to']} 달성!</span></div>"
         )
-        st.balloons()
-        st.snow()
     elif last["type"] == "destroy":
         anim_class = "anim-destroy"
-        box_extra_class = "box-flash-red box-shake-big"
-        particles_html = particle_burst(
-            ["💥", "🔥", "💢", "😱", "🍡", "💔", "⚡"], count=32, spread=180
-        )
+        eff = get_effect_scale(last.get("level", 0))
+        if eff:
+            count, spread = eff
+            box_extra_class = "box-flash-red box-shake-big"
+            particles_html = particle_burst(
+                ["💥", "🔥", "💢", "😱", "🍡", "💔", "⚡"], count=count, spread=spread
+            )
         banner_html = (
             "<div class='result-banner banner-destroy'>"
-            "💥😱💔 떡이 완전히 파괴되었습니다!!! 💔😱💥<br>"
+            "💥😱 떡이 파괴되었습니다! 😱💥<br>"
             f"<span style='font-size:14px;'>Lv.{last['from']} → Lv.0</span></div>"
         )
     elif last["type"] == "protected":
         anim_class = "anim-protect"
-        box_extra_class = "box-flash-blue"
-        particles_html = particle_burst(["🛡️", "✨", "💠", "🔷"], count=18, spread=130)
+        eff = get_effect_scale(last.get("level", 0))
+        if eff:
+            count, spread = eff
+            box_extra_class = "box-flash-blue"
+            particles_html = particle_burst(
+                ["🛡️", "✨", "💠", "🔷"], count=min(count, 22), spread=spread
+            )
         banner_html = "<div class='result-banner banner-protect'>🛡️✨ 방지권 발동! 떡을 무사히 지켰습니다! ✨🛡️</div>"
     elif last["type"] == "sell":
         banner_html = f"<div class='result-banner banner-success'>💰 떡을 {last['price']:,}원에 판매했습니다!</div>"
@@ -388,14 +411,20 @@ with col_left:
             unsafe_allow_html=True,
         )
         can_afford = gold >= PROTECTION_PRICE
+        if st.button("😭 포기하고 파괴 인정", use_container_width=True, type="primary"):
+            st.session_state.level = 0
+            st.session_state.last_action = {"type": "destroy", "from": lvl, "level": lvl}
+            st.session_state.history.insert(0, f"💥 Lv.{lvl} → Lv.0 떡 파괴!")
+            st.session_state.history = st.session_state.history[:8]
+            st.session_state.pending_fail = None
+            st.rerun()
         if st.button(
             f"🛡️ 방지권 사용 (-{PROTECTION_PRICE:,}원)",
             use_container_width=True,
-            type="primary",
             disabled=not can_afford,
         ):
             st.session_state.gold -= PROTECTION_PRICE
-            st.session_state.last_action = {"type": "protected"}
+            st.session_state.last_action = {"type": "protected", "level": lvl}
             st.session_state.history.insert(
                 0, f"🛡️ Lv.{lvl} 파괴 위기 → 방지권 사용 (-{PROTECTION_PRICE:,}원)"
             )
@@ -404,13 +433,6 @@ with col_left:
             st.rerun()
         if not can_afford:
             st.caption("😢 골드가 부족해서 방지권을 살 수 없어요.")
-        if st.button("😭 포기하고 파괴 인정", use_container_width=True):
-            st.session_state.level = 0
-            st.session_state.last_action = {"type": "destroy", "from": lvl}
-            st.session_state.history.insert(0, f"💥 Lv.{lvl} → Lv.0 떡 파괴!")
-            st.session_state.history = st.session_state.history[:8]
-            st.session_state.pending_fail = None
-            st.rerun()
     else:
         target = level + 1
         succ = get_success_rate(target)
