@@ -210,46 +210,8 @@ with st.sidebar:
         st.rerun()
 
 # ============================================================
-# 실패 팝업 (강화 실패 시 방지권 사용 여부 선택)
+# (실패 처리는 강화 버튼이 있던 자리에 바로 인라인으로 표시됩니다)
 # ============================================================
-@st.dialog("💥 강화 실패 ㅠㅠ")
-def show_fail_dialog():
-    lvl = st.session_state.pending_fail["level"]
-    st.markdown(f"#### Lv.{lvl} 떡이 와장창 흔들립니다...")
-    st.write("지금 방지권을 사용하면 떡이 **그대로 유지**돼요.")
-    st.write("사용하지 않으면 떡이 **Lv.0으로 초기화**됩니다.")
-    st.divider()
-
-    can_afford = st.session_state.gold >= PROTECTION_PRICE
-    if st.button(
-        f"🛡️ 방지권 사용 (-{PROTECTION_PRICE:,}원)",
-        use_container_width=True,
-        type="primary",
-        disabled=not can_afford,
-    ):
-        st.session_state.gold -= PROTECTION_PRICE
-        st.session_state.last_action = {"type": "protected"}
-        st.session_state.history.insert(
-            0, f"🛡️ Lv.{lvl} 파괴 위기 → 방지권 사용 (-{PROTECTION_PRICE:,}원)"
-        )
-        st.session_state.history = st.session_state.history[:8]
-        st.session_state.pending_fail = None
-        st.rerun()
-
-    if not can_afford:
-        st.caption("😢 골드가 부족해서 방지권을 살 수 없어요.")
-
-    if st.button("😭 포기하고 파괴 인정", use_container_width=True):
-        st.session_state.level = 0
-        st.session_state.last_action = {"type": "destroy", "from": lvl}
-        st.session_state.history.insert(0, f"💥 Lv.{lvl} → Lv.0 떡 파괴!")
-        st.session_state.history = st.session_state.history[:8]
-        st.session_state.pending_fail = None
-        st.rerun()
-
-
-if st.session_state.pending_fail is not None:
-    show_fail_dialog()
 
 # ============================================================
 # 메인 타이틀
@@ -322,6 +284,39 @@ with col_left:
             st.session_state.history.insert(0, f"💰 Lv.{level} 떡 판매 (+{sell_price:,}원)")
             st.session_state.history = st.session_state.history[:8]
             st.session_state.level = 0
+            st.rerun()
+    elif st.session_state.pending_fail is not None:
+        lvl = st.session_state.pending_fail["level"]
+        st.markdown(
+            f"<div class='result-banner banner-destroy' style='margin-top:0;'>"
+            f"💥 강화 실패 ㅠㅠ<br><span style='font-weight:400; font-size:14px;'>"
+            f"Lv.{lvl} 떡이 와장창 흔들려요! 방지권을 쓰면 그대로 유지, "
+            f"안 쓰면 Lv.0으로 초기화됩니다.</span></div>",
+            unsafe_allow_html=True,
+        )
+        can_afford = gold >= PROTECTION_PRICE
+        if st.button(
+            f"🛡️ 방지권 사용 (-{PROTECTION_PRICE:,}원)",
+            use_container_width=True,
+            type="primary",
+            disabled=not can_afford,
+        ):
+            st.session_state.gold -= PROTECTION_PRICE
+            st.session_state.last_action = {"type": "protected"}
+            st.session_state.history.insert(
+                0, f"🛡️ Lv.{lvl} 파괴 위기 → 방지권 사용 (-{PROTECTION_PRICE:,}원)"
+            )
+            st.session_state.history = st.session_state.history[:8]
+            st.session_state.pending_fail = None
+            st.rerun()
+        if not can_afford:
+            st.caption("😢 골드가 부족해서 방지권을 살 수 없어요.")
+        if st.button("😭 포기하고 파괴 인정", use_container_width=True):
+            st.session_state.level = 0
+            st.session_state.last_action = {"type": "destroy", "from": lvl}
+            st.session_state.history.insert(0, f"💥 Lv.{lvl} → Lv.0 떡 파괴!")
+            st.session_state.history = st.session_state.history[:8]
+            st.session_state.pending_fail = None
             st.rerun()
     else:
         target = level + 1
