@@ -164,18 +164,16 @@ st.markdown(
     .banner-destroy { background: rgba(255,0,80,0.14); color:#ff5f7e; border:1px solid rgba(255,0,80,0.4);}
     .banner-protect { background: rgba(80,180,255,0.14); color:#63c4ff; border:1px solid rgba(80,180,255,0.4);}
     .gold-display {
-        position: fixed;
-        bottom: 14px;
-        left: 14px;
-        background: rgba(20,20,25,0.85);
+        background: rgba(20,20,25,0.9);
         color: #ffd700;
-        padding: 8px 14px;
+        padding: 10px 14px;
         border-radius: 10px;
-        font-size: 15px;
-        font-weight: 600;
+        font-size: 16px;
+        font-weight: 700;
         border: 1px solid rgba(255,215,0,0.35);
-        z-index: 9999;
         box-shadow: 0 2px 10px rgba(0,0,0,0.4);
+        text-align: center;
+        margin-bottom: 10px;
     }
     </style>
     """,
@@ -183,9 +181,13 @@ st.markdown(
 )
 
 # ============================================================
-# 사이드바 - 게임 설명 & 기록
+# 사이드바 - 소유 골드 표시 & 게임 설명 & 기록
 # ============================================================
 with st.sidebar:
+    st.markdown(
+        f"<div class='gold-display'>💰 보유 골드<br>{st.session_state.gold:,}원</div>",
+        unsafe_allow_html=True,
+    )
     st.markdown("### 📖 게임 방법")
     st.markdown(
         """
@@ -303,6 +305,11 @@ with col_right:
     )
 
 with col_left:
+    st.markdown(
+        f"<div class='gold-display' style='font-size:14px; padding:6px 10px; margin-bottom:8px;'>"
+        f"💰 {st.session_state.gold:,}원</div>",
+        unsafe_allow_html=True,
+    )
     st.progress(level / MAX_LEVEL)
 
     if level >= MAX_LEVEL:
@@ -366,11 +373,3 @@ with col_left:
         with st.expander("📜 최근 기록"):
             for h in st.session_state.history:
                 st.write(h)
-
-# ============================================================
-# 좌측 하단 골드 표시 (고정)
-# ============================================================
-st.markdown(
-    f"<div class='gold-display'>💰 {st.session_state.gold:,}원</div>",
-    unsafe_allow_html=True,
-)
