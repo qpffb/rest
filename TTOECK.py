@@ -92,8 +92,11 @@ init_state()
 st.markdown(
     """
     <style>
+    header[data-testid="stHeader"] {
+        background: rgba(14,17,23,0.95);
+    }
     .block-container {
-        padding-top: 1.2rem !important;
+        padding-top: 3.5rem !important;
         padding-bottom: 1rem !important;
         max-width: 760px;
     }
