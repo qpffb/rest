@@ -44,6 +44,24 @@ def get_success_rate(target_level: int) -> int:
         return 25
 
 
+def particle_burst(emojis, count=24, spread=150):
+    """레벨업/파괴 등 이벤트 시 사방으로 튀는 파티클 이펙트 HTML 생성"""
+    spans = []
+    for _ in range(count):
+        e = random.choice(emojis)
+        dist = random.uniform(spread * 0.4, spread)
+        angle = random.uniform(0, 6.283)
+        tx = round(dist * random.uniform(-1, 1))
+        ty = round(dist * random.uniform(-1, 1))
+        delay = round(random.uniform(0, 0.35), 2)
+        size = random.randint(16, 34)
+        spans.append(
+            f"<span class='particle' style='--tx:{tx}px; --ty:{ty}px; "
+            f"animation-delay:{delay}s; font-size:{size}px;'>{e}</span>"
+        )
+    return "".join(spans)
+
+
 def get_tier(level: int):
     """레벨에 따른 떡 이름/이모지/색상"""
     if level == 0:
@@ -134,7 +152,59 @@ st.markdown(
         from { opacity: 0; transform: translateY(-8px); }
         to { opacity: 1; transform: translateY(0); }
     }
+    @keyframes burst {
+        0% { transform: translate(-50%,-50%) scale(0.3) rotate(0deg); opacity: 1; }
+        55% { opacity: 1; }
+        100% { transform: translate(calc(-50% + var(--tx)), calc(-50% + var(--ty))) scale(1.4) rotate(380deg); opacity: 0; }
+    }
+    @keyframes flashgold {
+        0% { background: radial-gradient(circle, rgba(255,215,0,0.65), rgba(255,215,0,0.08)); }
+        100% { background: radial-gradient(circle at 50% 30%, rgba(255,255,255,0.10), rgba(255,255,255,0.02)); }
+    }
+    @keyframes flashred {
+        0% { background: radial-gradient(circle, rgba(255,0,60,0.7), rgba(255,0,60,0.08)); }
+        100% { background: radial-gradient(circle at 50% 30%, rgba(255,255,255,0.10), rgba(255,255,255,0.02)); }
+    }
+    @keyframes flashblue {
+        0% { background: radial-gradient(circle, rgba(80,180,255,0.65), rgba(80,180,255,0.08)); }
+        100% { background: radial-gradient(circle at 50% 30%, rgba(255,255,255,0.10), rgba(255,255,255,0.02)); }
+    }
+    @keyframes bigshake {
+        0% { transform: translate(0,0) rotate(0deg); }
+        10% { transform: translate(-18px,4px) rotate(-4deg); }
+        20% { transform: translate(16px,-6px) rotate(4deg); }
+        30% { transform: translate(-14px,6px) rotate(-3deg); }
+        40% { transform: translate(12px,-4px) rotate(3deg); }
+        50% { transform: translate(-10px,4px) rotate(-2deg); }
+        60% { transform: translate(9px,-3px) rotate(2deg); }
+        70% { transform: translate(-6px,2px) rotate(-1deg); }
+        80% { transform: translate(5px,-2px) rotate(1deg); }
+        90% { transform: translate(-2px,1px) rotate(0deg); }
+        100% { transform: translate(0,0) rotate(0deg); }
+    }
+    @keyframes rainbowtext {
+        0% { color: #ff5f7e; }
+        25% { color: #ffd700; }
+        50% { color: #7cff6b; }
+        75% { color: #63c4ff; }
+        100% { color: #ff5f7e; }
+    }
+    .box-shake-big { animation: bigshake 0.7s ease-in-out; }
+    .box-flash-gold { animation: flashgold 1.3s ease-out; }
+    .box-flash-red { animation: flashred 1.3s ease-out; }
+    .box-flash-blue { animation: flashblue 1.3s ease-out; }
+    .particle {
+        position: absolute;
+        left: 50%; top: 45%;
+        transform: translate(-50%, -50%);
+        animation: burst 1.3s ease-out forwards;
+        pointer-events: none;
+        z-index: 5;
+    }
+    .banner-rainbow { animation: fadein 0.4s ease-out, rainbowtext 1.2s linear infinite !important; }
     .rice-cake-box {
+        position: relative;
+        overflow: visible;
         text-align: center;
         padding: 14px 6px;
         border-radius: 20px;
@@ -227,21 +297,43 @@ gold = st.session_state.gold
 emoji, name, color = get_tier(level)
 
 # ============================================================
-# 애니메이션 & 배너 결정
+# 애니메이션 & 배너 & 파티클 결정 (일부러 과하게!)
 # ============================================================
 anim_class = ""
+box_extra_class = ""
 banner_html = ""
+particles_html = ""
 last = st.session_state.last_action
 if last is not None:
     if last["type"] == "success":
         anim_class = "anim-success"
-        banner_html = f"<div class='result-banner banner-success'>✨💥 강화 성공! Lv.{last['from']} → Lv.{last['to']} ✨</div>"
+        box_extra_class = "box-flash-gold"
+        particles_html = particle_burst(
+            ["✨", "⭐", "🌟", "💥", "🎉", "🎆", "💫", "🔥"], count=28, spread=160
+        )
+        banner_html = (
+            "<div class='result-banner banner-success banner-rainbow'>"
+            "🎉✨💥 강화 대성공!!! 💥✨🎉<br>"
+            f"<span style='font-size:14px;'>Lv.{last['from']} → Lv.{last['to']} 달성!</span></div>"
+        )
+        st.balloons()
+        st.snow()
     elif last["type"] == "destroy":
         anim_class = "anim-destroy"
-        banner_html = f"<div class='result-banner banner-destroy'>💥😱 떡이 파괴되었습니다! Lv.{last['from']} → Lv.0</div>"
+        box_extra_class = "box-flash-red box-shake-big"
+        particles_html = particle_burst(
+            ["💥", "🔥", "💢", "😱", "🍡", "💔", "⚡"], count=32, spread=180
+        )
+        banner_html = (
+            "<div class='result-banner banner-destroy'>"
+            "💥😱💔 떡이 완전히 파괴되었습니다!!! 💔😱💥<br>"
+            f"<span style='font-size:14px;'>Lv.{last['from']} → Lv.0</span></div>"
+        )
     elif last["type"] == "protected":
         anim_class = "anim-protect"
-        banner_html = "<div class='result-banner banner-protect'>🛡️ 방지권 발동! 떡을 무사히 지켰습니다.</div>"
+        box_extra_class = "box-flash-blue"
+        particles_html = particle_burst(["🛡️", "✨", "💠", "🔷"], count=18, spread=130)
+        banner_html = "<div class='result-banner banner-protect'>🛡️✨ 방지권 발동! 떡을 무사히 지켰습니다! ✨🛡️</div>"
     elif last["type"] == "sell":
         banner_html = f"<div class='result-banner banner-success'>💰 떡을 {last['price']:,}원에 판매했습니다!</div>"
 
@@ -257,7 +349,8 @@ with col_right:
     font_size = min(90 + level * 6, 220)
     st.markdown(
         f"""
-        <div class="rice-cake-box">
+        <div class="rice-cake-box {box_extra_class}">
+            {particles_html}
             <div class="{anim_class}" style="font-size:{font_size}px; line-height:1;">{emoji}</div>
             <div style="font-size:22px; font-weight:700; color:{color}; margin-top:8px;">{name}</div>
             <div style="font-size:15px; color:#aaaaaa;">Lv. {level} / {MAX_LEVEL}</div>
@@ -353,16 +446,19 @@ with col_left:
                 st.rerun()
 
         sell_price = get_sell_price(level)
-        if st.button(f"💰 떡 팔기 ({sell_price:,}원)", use_container_width=True):
-            st.session_state.gold += sell_price
-            st.session_state.total_sold += sell_price
-            st.session_state.last_action = {"type": "sell", "price": sell_price}
-            st.session_state.history.insert(
-                0, f"💰 Lv.{level} 떡 판매 (+{sell_price:,}원)"
-            )
-            st.session_state.history = st.session_state.history[:8]
-            st.session_state.level = 0
-            st.rerun()
+        if level > 0:
+            if st.button(f"💰 떡 팔기 ({sell_price:,}원)", use_container_width=True):
+                st.session_state.gold += sell_price
+                st.session_state.total_sold += sell_price
+                st.session_state.last_action = {"type": "sell", "price": sell_price}
+                st.session_state.history.insert(
+                    0, f"💰 Lv.{level} 떡 판매 (+{sell_price:,}원)"
+                )
+                st.session_state.history = st.session_state.history[:8]
+                st.session_state.level = 0
+                st.rerun()
+        else:
+            st.caption("💡 강화하지 않은 떡은 팔 수 없어요. 레벨을 올려보세요!")
 
     if st.session_state.history:
         with st.expander("📜 최근 기록"):
