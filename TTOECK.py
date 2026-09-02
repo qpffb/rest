@@ -62,6 +62,107 @@ def particle_burst(emojis, count=24, spread=150):
     return "".join(spans)
 
 
+import streamlit.components.v1 as components
+
+BOX_CSS = """
+<style>
+    * { box-sizing: border-box; }
+    html, body {
+        margin: 0; padding: 0; background: transparent;
+        font-family: "Source Sans Pro", sans-serif;
+        overflow: hidden;
+    }
+    @keyframes shake {
+        0% { transform: translateX(0); }
+        15% { transform: translateX(-16px) rotate(-3deg); }
+        30% { transform: translateX(14px) rotate(3deg); }
+        45% { transform: translateX(-12px) rotate(-2deg); }
+        60% { transform: translateX(9px) rotate(2deg); }
+        75% { transform: translateX(-5px); }
+        100% { transform: translateX(0); }
+    }
+    @keyframes glowpulse {
+        0% { transform: scale(1); filter: drop-shadow(0 0 0px gold); }
+        30% { transform: scale(1.3); filter: drop-shadow(0 0 40px gold); }
+        60% { transform: scale(1.08); filter: drop-shadow(0 0 22px #fff59d); }
+        100% { transform: scale(1); filter: drop-shadow(0 0 6px gold); }
+    }
+    @keyframes glowblue {
+        0% { transform: scale(1); filter: drop-shadow(0 0 0px #63c4ff); }
+        30% { transform: scale(1.25); filter: drop-shadow(0 0 35px #63c4ff); }
+        60% { transform: scale(1.05); filter: drop-shadow(0 0 18px #bfe8ff); }
+        100% { transform: scale(1); filter: drop-shadow(0 0 6px #63c4ff); }
+    }
+    @keyframes shatter {
+        0% { transform: scale(1) rotate(0deg); opacity: 1; filter: brightness(1); }
+        20% { transform: scale(1.2) rotate(-8deg); filter: brightness(2) saturate(2); }
+        50% { transform: scale(1.5) rotate(15deg); opacity: 0.6; filter: brightness(3) hue-rotate(300deg); }
+        100% { transform: scale(0.2) rotate(45deg); opacity: 0; }
+    }
+    @keyframes burst {
+        0% { transform: translate(-50%,-50%) scale(0.3) rotate(0deg); opacity: 1; }
+        55% { opacity: 1; }
+        100% { transform: translate(calc(-50% + var(--tx)), calc(-50% + var(--ty))) scale(1.4) rotate(380deg); opacity: 0; }
+    }
+    @keyframes flashgold {
+        0% { background: radial-gradient(circle, rgba(255,215,0,0.65), rgba(255,215,0,0.08)); }
+        100% { background: radial-gradient(circle at 50% 30%, rgba(255,255,255,0.10), rgba(255,255,255,0.02)); }
+    }
+    @keyframes flashred {
+        0% { background: radial-gradient(circle, rgba(255,0,60,0.7), rgba(255,0,60,0.08)); }
+        100% { background: radial-gradient(circle at 50% 30%, rgba(255,255,255,0.10), rgba(255,255,255,0.02)); }
+    }
+    @keyframes flashblue {
+        0% { background: radial-gradient(circle, rgba(80,180,255,0.65), rgba(80,180,255,0.08)); }
+        100% { background: radial-gradient(circle at 50% 30%, rgba(255,255,255,0.10), rgba(255,255,255,0.02)); }
+    }
+    @keyframes bigshake {
+        0% { transform: translate(0,0) rotate(0deg); }
+        10% { transform: translate(-18px,4px) rotate(-4deg); }
+        20% { transform: translate(16px,-6px) rotate(4deg); }
+        30% { transform: translate(-14px,6px) rotate(-3deg); }
+        40% { transform: translate(12px,-4px) rotate(3deg); }
+        50% { transform: translate(-10px,4px) rotate(-2deg); }
+        60% { transform: translate(9px,-3px) rotate(2deg); }
+        70% { transform: translate(-6px,2px) rotate(-1deg); }
+        80% { transform: translate(5px,-2px) rotate(1deg); }
+        90% { transform: translate(-2px,1px) rotate(0deg); }
+        100% { transform: translate(0,0) rotate(0deg); }
+    }
+    .box-shake-big { animation: bigshake 0.7s ease-in-out; }
+    .box-flash-gold { animation: flashgold 1.3s ease-out; }
+    .box-flash-red { animation: flashred 1.3s ease-out; }
+    .box-flash-blue { animation: flashblue 1.3s ease-out; }
+    .particle {
+        position: absolute;
+        left: 50%; top: 45%;
+        transform: translate(-50%, -50%);
+        animation: burst 1.3s ease-out forwards;
+        pointer-events: none;
+        z-index: 5;
+    }
+    .rice-cake-box {
+        position: relative;
+        overflow: visible;
+        text-align: center;
+        padding: 14px 6px;
+        border-radius: 20px;
+        background: radial-gradient(circle at 50% 30%, rgba(255,255,255,0.10), rgba(255,255,255,0.02));
+        border: 1px solid rgba(255,255,255,0.08);
+        height: 340px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+    .anim-success { animation: glowpulse 0.9s ease-in-out; display:inline-block; }
+    .anim-fail { animation: shake 0.6s ease-in-out; display:inline-block; }
+    .anim-destroy { animation: shatter 0.9s ease-in; display:inline-block; }
+    .anim-protect { animation: glowblue 0.9s ease-in-out; display:inline-block; }
+</style>
+"""
+
+
 def get_tier(level: int):
     """레벨에 따른 떡 이름/이모지/색상"""
     if level == 0:
