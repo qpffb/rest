@@ -370,17 +370,15 @@ col_left, col_right = st.columns([1, 1.3])
 
 with col_right:
     font_size = min(90 + level * 6, 220)
-    st.markdown(
-        f"""
-        <div class="rice-cake-box {box_extra_class}">
-            {particles_html}
-            <div class="{anim_class}" style="font-size:{font_size}px; line-height:1;">{emoji}</div>
-            <div style="font-size:22px; font-weight:700; color:{color}; margin-top:8px;">{name}</div>
-            <div style="font-size:15px; color:#aaaaaa;">Lv. {level} / {MAX_LEVEL}</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
+    box_html = (
+        f'<div class="rice-cake-box {box_extra_class}">'
+        f'{particles_html}'
+        f'<div class="{anim_class}" style="font-size:{font_size}px; line-height:1;">{emoji}</div>'
+        f'<div style="font-size:22px; font-weight:700; color:{color}; margin-top:8px;">{name}</div>'
+        f'<div style="font-size:15px; color:#aaaaaa;">Lv. {level} / {MAX_LEVEL}</div>'
+        f'</div>'
     )
+    st.markdown(box_html, unsafe_allow_html=True)
 
 with col_left:
     st.markdown(
@@ -457,7 +455,7 @@ with col_left:
                         st.session_state.max_reached, st.session_state.level
                     )
                     st.session_state.last_action = {
-                        "type": "success", "from": level, "to": level + 1
+                        "type": "success", "from": level, "to": level + 1, "level": level + 1
                     }
                     st.session_state.history.insert(
                         0, f"✅ Lv.{level} → Lv.{level+1} 강화 성공 (-{cost:,}원)"
