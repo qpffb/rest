@@ -505,8 +505,7 @@ with col_left:
         st.markdown(
             f"<div class='result-banner banner-destroy' style='margin-top:0;'>"
             f"💥 강화 실패 ㅠㅠ<br><span style='font-weight:400; font-size:14px;'>"
-            f"Lv.{lvl} 떡이 와장창 흔들려요! 방지권을 쓰면 그대로 유지, "
-            f"안 쓰면 Lv.0으로 초기화됩니다.</span></div>",
+            f"Lv.{lvl} 떡이 와장창 흔들려요!</span></div>",
             unsafe_allow_html=True,
         )
         can_afford = gold >= PROTECTION_PRICE
