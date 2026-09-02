@@ -201,24 +201,31 @@ BOX_CSS = """
 """
 
 
-def get_tier(level: int):
-    """레벨에 따른 떡 이름/이모지/색상"""
-    if level == 0:
-        return ("🍡", "평범한 떡", "#c9a876")
-    elif level <= 4:
-        return ("🍡", "단단한 떡", "#c98b4a")
-    elif level <= 8:
-        return ("🍘", "쫄깃한 떡", "#e0a52c")
-    elif level <= 11:
-        return ("🥮", "특제 떡", "#d97b29")
-    elif level <= 14:
-        return ("🍡", "명인의 떡", "#b968e0")
-    elif level <= 17:
-        return ("🍡", "전설의 떡", "#4facfe")
-    elif level <= 19:
-        return ("🍡", "신화의 떡", "#ff5fa2")
-    else:
-        return ("👑", "레전드 떡", "#ffd700")
+TIER_DATA = [
+    # (최소레벨, 최대레벨, 이모지, 색상, [이름 후보들])
+    (0, 0, "🍡", "#c9a876", ["평범한 떡", "갓 만든 떡", "밍숭맹숭 떡", "초보 떡"]),
+    (1, 4, "🍡", "#c98b4a", ["단단한 떡", "야무진 떡", "쫀쫀한 떡", "탱탱볼 떡"]),
+    (5, 8, "🍘", "#e0a52c", ["쫄깃한 떡", "찰떡궁합 떡", "떡심 좋은 떡", "존맛 떡"]),
+    (9, 11, "🥮", "#d97b29", ["특제 떡", "장인의 손맛 떡", "명품 떡", "프리미엄 떡"]),
+    (12, 14, "🍡", "#b968e0", ["명인의 떡", "금손 떡", "달인의 떡", "레어템 떡"]),
+    (15, 17, "🍡", "#4facfe", ["전설의 떡", "떡계의 전설", "떡판 지배자", "궁극의 떡"]),
+    (18, 19, "🍡", "#ff5fa2", ["신화의 떡", "떡신 강림", "우주 최강 떡", "떡계 최정상"]),
+    (20, 20, "👑", "#ffd700", ["레전드 떡", "떡의 신", "떡계 GOAT", "우주 유일 떡"]),
+]
+
+
+def get_tier_bucket(level: int):
+    """레벨에 해당하는 (이모지, 색상, 이름 후보 리스트)를 반환"""
+    for lo, hi, emoji, color, names in TIER_DATA:
+        if lo <= level <= hi:
+            return emoji, color, names
+    return TIER_DATA[-1][2], TIER_DATA[-1][3], TIER_DATA[-1][4]
+
+
+def reroll_tier_name(level: int):
+    """레벨이 바뀔 때마다 해당 티어의 이름 후보 중 하나를 새로 뽑아 저장"""
+    _, _, names = get_tier_bucket(level)
+    st.session_state.tier_name = random.choice(names)
 
 
 # ============================================================
@@ -241,6 +248,8 @@ def init_state():
         st.session_state.pending_fail = None
     if "registered_this_run" not in st.session_state:
         st.session_state.registered_this_run = False
+    if "tier_name" not in st.session_state:
+        reroll_tier_name(st.session_state.level)
 
 
 init_state()
@@ -456,7 +465,8 @@ st.markdown(
 
 level = st.session_state.level
 gold = st.session_state.gold
-emoji, name, color = get_tier(level)
+emoji, color, _ = get_tier_bucket(level)
+name = st.session_state.tier_name
 
 # ============================================================
 # 애니메이션 & 배너 & 파티클 결정 (일부러 과하게!)
@@ -576,6 +586,7 @@ with col_left:
             st.session_state.history = st.session_state.history[:8]
             st.session_state.level = 0
             st.session_state.registered_this_run = False
+            reroll_tier_name(0)
             st.rerun()
     elif st.session_state.pending_fail is not None:
         lvl = st.session_state.pending_fail["level"]
@@ -593,6 +604,7 @@ with col_left:
             st.session_state.history.insert(0, f"💥 Lv.{lvl} → Lv.0 떡 파괴!")
             st.session_state.history = st.session_state.history[:8]
             st.session_state.pending_fail = None
+            reroll_tier_name(0)
             st.rerun()
         if st.button(
             f"🛡️ 방지권 사용 (-{PROTECTION_PRICE:,}원)",
@@ -639,6 +651,7 @@ with col_left:
                         0, f"✅ Lv.{level} → Lv.{level+1} 강화 성공 (-{cost:,}원)"
                     )
                     st.session_state.history = st.session_state.history[:8]
+                    reroll_tier_name(level + 1)
                 else:
                     st.session_state.pending_fail = {"level": level}
                 st.rerun()
@@ -654,6 +667,7 @@ with col_left:
                 )
                 st.session_state.history = st.session_state.history[:8]
                 st.session_state.level = 0
+                reroll_tier_name(0)
                 st.rerun()
         else:
             st.caption("💡 강화하지 않은 떡은 팔 수 없어요. 레벨을 올려보세요!")
