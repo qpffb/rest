@@ -1,5 +1,9 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import random
+import json
+import os
+from datetime import datetime
 
 # ============================================================
 # 페이지 설정
@@ -16,6 +20,42 @@ st.set_page_config(
 MAX_LEVEL = 20
 STARTING_GOLD = 1_000_000
 PROTECTION_PRICE = 400_000
+
+LEADERBOARD_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "leaderboard.json")
+LEADERBOARD_MAX_ENTRIES = 10
+
+
+def load_leaderboard():
+    try:
+        with open(LEADERBOARD_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            if isinstance(data, list):
+                return data
+    except (FileNotFoundError, json.JSONDecodeError):
+        pass
+    return []
+
+
+def save_leaderboard(entries):
+    try:
+        with open(LEADERBOARD_FILE, "w", encoding="utf-8") as f:
+            json.dump(entries, f, ensure_ascii=False, indent=2)
+    except OSError:
+        pass
+
+
+def add_leaderboard_entry(name: str, gold: int):
+    entries = load_leaderboard()
+    entries.append(
+        {
+            "name": name.strip()[:12] or "익명의 떡장인",
+            "gold": gold,
+            "time": datetime.now().strftime("%Y-%m-%d %H:%M"),
+        }
+    )
+    entries.sort(key=lambda e: e["gold"], reverse=True)
+    entries = entries[:50]
+    save_leaderboard(entries)
 
 
 def get_enhance_cost(level: int) -> int:
@@ -61,8 +101,6 @@ def particle_burst(emojis, count=24, spread=150):
         )
     return "".join(spans)
 
-
-import streamlit.components.v1 as components
 
 BOX_CSS = """
 <style>
@@ -201,6 +239,8 @@ def init_state():
         st.session_state.total_sold = 0
     if "pending_fail" not in st.session_state:
         st.session_state.pending_fail = None
+    if "registered_this_run" not in st.session_state:
+        st.session_state.registered_this_run = False
 
 
 init_state()
@@ -379,6 +419,27 @@ with st.sidebar:
         for k in list(st.session_state.keys()):
             del st.session_state[k]
         st.rerun()
+    st.divider()
+
+    # ------------------------------------------------------
+    # 🏆 리더보드 (레전드 떡 명예의 전당)
+    # ------------------------------------------------------
+    st.markdown("### 🏆 리더보드")
+    st.caption("Lv.20 레전드 떡 완성자 명단")
+    board = load_leaderboard()
+    if board:
+        medal = ["🥇", "🥈", "🥉"]
+        for i, entry in enumerate(board[:LEADERBOARD_MAX_ENTRIES]):
+            rank_icon = medal[i] if i < 3 else f"{i+1}."
+            st.markdown(
+                f"<div style='display:flex; justify-content:space-between; "
+                f"font-size:13px; padding:3px 0;'>"
+                f"<span>{rank_icon} {entry['name']}</span>"
+                f"<span style='color:#ffd700;'>{entry['gold']:,}원</span></div>",
+                unsafe_allow_html=True,
+            )
+    else:
+        st.caption("아직 아무도 등록하지 않았어요. 첫 번째 레전드가 되어보세요!")
 
 # ============================================================
 # (실패 처리는 강화 버튼이 있던 자리에 바로 인라인으로 표시됩니다)
@@ -472,14 +533,15 @@ col_left, col_right = st.columns([1, 1.3])
 with col_right:
     font_size = min(90 + level * 6, 220)
     box_html = (
+        f'{BOX_CSS}'
         f'<div class="rice-cake-box {box_extra_class}">'
         f'{particles_html}'
         f'<div class="{anim_class}" style="font-size:{font_size}px; line-height:1;">{emoji}</div>'
-        f'<div style="font-size:22px; font-weight:700; color:{color}; margin-top:8px;">{name}</div>'
-        f'<div style="font-size:15px; color:#aaaaaa;">Lv. {level} / {MAX_LEVEL}</div>'
+        f'<div style="font-size:22px; font-weight:700; color:{color}; margin-top:8px; font-family:sans-serif;">{name}</div>'
+        f'<div style="font-size:15px; color:#aaaaaa; font-family:sans-serif;">Lv. {level} / {MAX_LEVEL}</div>'
         f'</div>'
     )
-    st.markdown(box_html, unsafe_allow_html=True)
+    components.html(box_html, height=360, scrolling=False)
 
 with col_left:
     st.markdown(
@@ -491,6 +553,20 @@ with col_left:
 
     if level >= MAX_LEVEL:
         st.success("🎉 레전드 떡 완성!\n이제 팔아서 대박 나세요!")
+
+        if not st.session_state.registered_this_run:
+            st.markdown("#### 🏆 리더보드에 이름을 남겨보세요!")
+            player_name = st.text_input(
+                "이름 (최대 12자)", key="player_name_input", placeholder="예: 떡장인"
+            )
+            if st.button("📝 리더보드에 등록", use_container_width=True):
+                add_leaderboard_entry(player_name, st.session_state.gold)
+                st.session_state.registered_this_run = True
+                st.toast("🏆 리더보드에 등록되었습니다!", icon="✅")
+                st.rerun()
+        else:
+            st.caption("✅ 이번 판은 이미 리더보드에 등록했어요!")
+
         sell_price = get_sell_price(level)
         if st.button(f"💰 떡 팔기 ({sell_price:,}원)", use_container_width=True, type="primary"):
             st.session_state.gold += sell_price
@@ -499,13 +575,15 @@ with col_left:
             st.session_state.history.insert(0, f"💰 Lv.{level} 떡 판매 (+{sell_price:,}원)")
             st.session_state.history = st.session_state.history[:8]
             st.session_state.level = 0
+            st.session_state.registered_this_run = False
             st.rerun()
     elif st.session_state.pending_fail is not None:
         lvl = st.session_state.pending_fail["level"]
         st.markdown(
             f"<div class='result-banner banner-destroy' style='margin-top:0;'>"
             f"💥 강화 실패 ㅠㅠ<br><span style='font-weight:400; font-size:14px;'>"
-            f"Lv.{lvl} 떡이 와장창 흔들려요!</span></div>",
+            f"Lv.{lvl} 떡이 와장창 흔들려요! 방지권을 쓰면 그대로 유지, "
+            f"안 쓰면 Lv.0으로 초기화됩니다.</span></div>",
             unsafe_allow_html=True,
         )
         can_afford = gold >= PROTECTION_PRICE
