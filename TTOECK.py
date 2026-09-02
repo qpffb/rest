@@ -662,3 +662,53 @@ with col_left:
         with st.expander("📜 최근 기록"):
             for h in st.session_state.history:
                 st.write(h)
+
+# ============================================================
+# ⌨️ 키보드 단축키
+#   - Space: 강화하기 (또는 실패 화면에서는 포기하고 파괴 인정)
+#   - W: 방지권 사용
+# ============================================================
+components.html(
+    """
+    <script>
+    (function() {
+        try {
+            var doc = window.parent.document;
+            if (window.parent.__ddeokKeysBound) { return; }
+            window.parent.__ddeokKeysBound = true;
+            doc.addEventListener('keydown', function(e) {
+                if (e.repeat) { return; }
+                var tag = (e.target && e.target.tagName) || '';
+                if (tag === 'INPUT' || tag === 'TEXTAREA') { return; }
+
+                var buttons = Array.from(doc.querySelectorAll('button'));
+                function findBtn(txt) {
+                    return buttons.find(function(b) {
+                        return b.innerText && b.innerText.includes(txt);
+                    });
+                }
+
+                if (e.code === 'Space') {
+                    e.preventDefault();
+                    var enhanceBtn = findBtn('강화하기');
+                    var giveupBtn = findBtn('포기하고 파괴 인정');
+                    if (enhanceBtn && !enhanceBtn.disabled) {
+                        enhanceBtn.click();
+                    } else if (giveupBtn && !giveupBtn.disabled) {
+                        giveupBtn.click();
+                    }
+                } else if (e.key === 'w' || e.key === 'W') {
+                    var protectBtn = findBtn('방지권 사용');
+                    if (protectBtn && !protectBtn.disabled) {
+                        protectBtn.click();
+                    }
+                }
+            });
+        } catch (err) {
+            console.error('단축키 바인딩 오류:', err);
+        }
+    })();
+    </script>
+    """,
+    height=0,
+)
